@@ -1,0 +1,39 @@
+version: '3'
+services:
+  cassandra:
+    image: cassandra:latest
+    environment:
+      - CASSANDRA_USER=admin
+      - CASSANDRA_PASSWORD=password
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=trainings_ztbd
+
+    volumes:
+      - mongodb_data:/data/db
+
+  postgresql:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=trainings_ztbd
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+
+volumes:
+  cassandra_data:
+  mongodb_data:
+  postgresql_data:
