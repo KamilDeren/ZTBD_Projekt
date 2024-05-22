@@ -13,6 +13,7 @@ POSTGRES_DB = "trainings_ztbd"
 POSTGRES_USER = "admin"
 POSTGRES_PASSWORD = "password"
 
+
 def get_postgres_connection():
     conn = psycopg2.connect(
         host=POSTGRES_HOST,
@@ -25,8 +26,104 @@ def get_postgres_connection():
 
 
 def create_tables_postgres(conn):
-    # TODO Stworzenie tabeli
-    pass
+    cursor = conn.cursor()
+    create_table_queries = [
+        """
+        CREATE TABLE IF NOT EXISTS Users (
+            id SERIAL PRIMARY KEY,
+            user_name TEXT,
+            surname TEXT,
+            email TEXT,
+            password TEXT,
+            isTrainer BOOLEAN,
+            gender TEXT,
+            weight INT,
+            age FLOAT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS ExercisesName (
+            id SERIAL PRIMARY KEY,
+            EN_name TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS Muscles (
+            id SERIAL PRIMARY KEY,
+            muscle_name TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS Exercises (
+            id SERIAL PRIMARY KEY,
+            exercise_name_id INT REFERENCES ExercisesName(id),
+            description TEXT,
+            gif TEXT,
+            tags TEXT[]
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS ExercisesMuscles (
+            exercise_id INT REFERENCES Exercises(id),
+            muscle_id INT REFERENCES Muscles(id),
+            PRIMARY KEY (exercise_id, muscle_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS Plans (
+            id SERIAL PRIMARY KEY,
+            weightsequences TEXT,
+            date DATE
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS ExercisesPlans (
+            exercise_id INT REFERENCES Exercises(id),
+            plan_id INT REFERENCES Plans(id),
+            PRIMARY KEY (exercise_id, plan_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS UsersPlans (
+            user_id INT REFERENCES Users(id),
+            trainer_id INT REFERENCES Users(id),
+            plan_id INT REFERENCES Plans(id),
+            PRIMARY KEY (user_id, plan_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS TrainingExercises(
+            id SERIAL PRIMARY KEY,
+            exercise_id INT REFERENCES Exercises(id),
+            sets INT,
+            rep INT,
+            weight FLOAT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS Trainings (
+            id SERIAL PRIMARY KEY,
+            date DATE,
+            user_id INT REFERENCES Users(id),
+            training_exercise_id INT REFERENCES TrainingExercises(id),
+            plan_id INT REFERENCES Plans(id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS TTExercises (
+            trainingexercise_id INT REFERENCES TrainingExercises(id),
+            training_id INT REFERENCES Trainings(id),
+            PRIMARY KEY (trainingexercise_id, training_id)
+        );
+        """
+    ]
+
+    for query in create_table_queries:
+        cursor.execute(query)
+        logger.info("Executed query: %s", query.strip())
+
+    conn.commit()
+    cursor.close()
 
 
 def insert_data_into_postgres(conn, num_rows):

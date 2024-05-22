@@ -29,8 +29,44 @@ def get_cassandra_session():
 
 
 def create_tables_cassandra(session):
-    # TODO Stworzenie tabeli
-    pass
+    create_table_queries = [
+        """
+        CREATE TABLE IF NOT EXISTS cwiczenia (
+            cwiczenie_id UUID PRIMARY KEY,
+            nazwa TEXT,
+            typ TEXT,
+            opis TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS plans (
+            user_id UUID,
+            plan_id UUID,
+            trainer_id UUID,
+            exercises LIST<TEXT>,
+            weight_sequence LIST<FLOAT>,
+            date TIMESTAMP,
+            PRIMARY KEY (user_id, date, plan_id)
+        ) WITH CLUSTERING ORDER BY (date DESC, plan_id ASC);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            user_id UUID PRIMARY KEY,
+            name TEXT,
+            surname TEXT,
+            email TEXT,
+            pass TEXT,
+            isTrainer BOOLEAN,
+            gender TEXT,
+            weight DOUBLE,
+            age INT
+        );
+        """
+    ]
+
+    for query in create_table_queries:
+        session.execute(query)
+        logger.info("Executed query: %s", query.strip())
 
 
 def insert_data_into_cassandra(session, num_rows):
