@@ -13,11 +13,11 @@ def main():
     logger.info("Finished Cassandra data insertion")
 
     logger.info("Starting PostgreSQL data insertion")
-    postgres_main()
+    #postgres_main()
     logger.info("Finished PostgreSQL data insertion")
 
     logger.info("Starting MongoDB data insertion")
-    mongodb_main()
+    #mongodb_main()
     logger.info("Finished MongoDB data insertion")
 
 

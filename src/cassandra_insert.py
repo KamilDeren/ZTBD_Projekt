@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+import random
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from faker import Faker
@@ -30,7 +31,7 @@ def get_cassandra_session():
     return session
 
 
-def create_tables_cassandra(session):
+def create_tables(session):
     create_table_queries = [
         """
         CREATE TABLE IF NOT EXISTS trainings (
@@ -45,11 +46,11 @@ def create_tables_cassandra(session):
             user_id UUID,
             plan_id UUID,
             trainer_id UUID,
-            exercises LIST<TEXT>,
+            exercise TEXT,
             weight_sequence LIST<FLOAT>,
             date TIMESTAMP,
-            PRIMARY KEY (user_id, date, plan_id)
-        ) WITH CLUSTERING ORDER BY (date DESC, plan_id ASC);
+            PRIMARY KEY (exercise)
+        );
         """,
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -70,7 +71,7 @@ def create_tables_cassandra(session):
         session.execute(query)
 
 
-def initial_insert_cassandra(session):
+def initial_insert(session):
     for _ in range(200):
         training_id = uuid.uuid4()
         title = fake.catch_phrase()
@@ -117,63 +118,96 @@ def initial_insert_cassandra(session):
         }))
 
 
-def insert_data_into_cassandra(session, num_rows):
+def insert_data(session, num_rows):
+    exercises = [
+        'Bench Press', 'Squat', 'Deadlift', 'Overhead Press', 'Pull Up',
+        'Push Up', 'Bicep Curl', 'Tricep Extension', 'Leg Press', 'Lateral Raise',
+        'Dumbbell Row', 'Plank', 'Lunge', 'Leg Curl', 'Chest Fly',
+        'Cable Crossover', 'Seated Row', 'Lat Pulldown', 'Face Pull', 'Calf Raise'
+    ]
     for _ in range(num_rows):
         user_id = uuid.uuid4()
         plan_id = uuid.uuid4()
         trainer_id = uuid.uuid4()
-        exercises = [fake.word() for _ in range(fake.random_int(min=1, max=10))]
+        exercise = random.sample(exercises, 1)[0]
         weight_sequence = [round(fake.random_number(digits=2, fix_len=False) + fake.random.random(), 1)
-                           for _ in range(len(exercises))]
+                           for _ in range(len(exercise))]
         date = fake.date_time_this_year()
 
         plan_query = session.prepare(
-            "INSERT INTO plans (user_id, plan_id, trainer_id, exercises, weight_sequence, date) VALUES (:user_id, "
-            ":plan_id, :trainer_id, :exercises, :weight_sequence, :date)"
+            "INSERT INTO plans (user_id, plan_id, trainer_id, exercise, weight_sequence, date) VALUES (:user_id, "
+            ":plan_id, :trainer_id, :exercise, :weight_sequence, :date)"
         )
 
         session.execute(plan_query.bind({
             'user_id': user_id,
             'plan_id': plan_id,
             'trainer_id': trainer_id,
-            'exercises': exercises,
+            'exercise': exercise,
             'weight_sequence': weight_sequence,
             'date': date
         }))
 
 
-def clear_cassandra(cassandra_session):
-    cassandra_session.execute("TRUNCATE TABLE trainings")
-    cassandra_session.execute("TRUNCATE TABLE users")
+def select_data(session):
+    session.execute("SELECT * FROM plans WHERE exercise = 'Deadlift'")
 
 
-def delete_data_cassandra(cassandra_session):
-    cassandra_session.execute("TRUNCATE TABLE plans")
+def put_data(session):
+    session.execute("UPDATE plans SET weight_sequence = [1.0, 2.0, 3.0] WHERE exercise = 'Deadlift'")
+
+
+def clear(session):
+    session.execute("TRUNCATE TABLE trainings")
+    session.execute("TRUNCATE TABLE users")
+
+
+def delete_data(session):
+    session.execute("TRUNCATE TABLE plans")
 
 
 def main():
-    cassandra_session = get_cassandra_session()
+    session = get_cassandra_session()
 
-    create_tables_cassandra(cassandra_session)
-    initial_insert_cassandra(cassandra_session)
+    # Initial inserts
+    create_tables(session)
+    initial_insert(session)
 
-    start_time_cassandra = datetime.now()
-    insert_data_into_cassandra(cassandra_session, 100)
-    end_time_cassandra = datetime.now()
+    # Insert time measurement
+    start = datetime.now()
+    insert_data(session, 100)
+    end = datetime.now()
 
-    duration_cassandra = end_time_cassandra - start_time_cassandra
-    logger.info("Czas wstawiania danych do bazy Cassandra: %s", duration_cassandra)
+    duration = end - start
+    logger.info("Czas wstawiania danych do bazy Cassandra: %s", duration)
 
-    start_time_postgres = datetime.now()
-    delete_data_cassandra(cassandra_session)
-    end_time_postgres = datetime.now()
+    # Select time measurement
+    start = datetime.now()
+    select_data(session)
+    end = datetime.now()
 
-    duration_mongodb = end_time_postgres - start_time_postgres
-    logger.info("Czas usuwania danych do bazy Cassandra: %s", duration_mongodb)
+    duration = end - start
+    logger.info("Czas szukania danych w bazie Cassandra: %s", duration)
 
-    clear_cassandra(cassandra_session)
+    # Put time measurement
+    start = datetime.now()
+    put_data(session)
+    end = datetime.now()
 
-    cassandra_session.shutdown()
+    duration = end - start
+    logger.info("Czas zamiany danych w bazie Cassandra: %s", duration)
+
+    # Delete time measurement
+    start = datetime.now()
+    delete_data(session)
+    end = datetime.now()
+
+    duration = end - start
+    logger.info("Czas usuwania danych z bazy Cassandra: %s", duration)
+
+    clear(session)
+
+    session.shutdown()
 
 
 if __name__ == "__main__":

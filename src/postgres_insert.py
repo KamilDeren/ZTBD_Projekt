@@ -278,6 +278,24 @@ def initial_insert_into_postgres(postgres_conn, rows):
     insert_train_trainings_exercises_into_postgres(postgres_conn, rows)
 
 
+def select_data(postgres_con):
+    cur = postgres_con.cursor()
+    query = """
+               SELECT p.*
+                FROM Plans p
+                JOIN ExercisesPlans ep ON p.id = ep.plan_id
+                JOIN Exercises e ON ep.exercise_id = e.id
+                JOIN ExercisesName en ON e.exercise_name_id = en.id
+                WHERE en.EN_name = 'Deadlift';
+           """
+    cur.execute(query)
+    plans = cur.fetchall()
+
+
+def put_data(client):
+    pass
+
+
 def clear_postgres(postgres_con):
     cur = postgres_con.cursor()
     commands = [

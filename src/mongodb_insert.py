@@ -59,6 +59,12 @@ def initial_insert_mongodb(client, rows):
 def insert_data_into_mongodb(client, trainer_ids, user_ids, rows):
     db = client[MONGO_DB]
     trainings = db['trainings']
+    exercises = [
+        'Bench Press', 'Squat', 'Deadlift', 'Overhead Press', 'Pull Up',
+        'Push Up', 'Bicep Curl', 'Tricep Extension', 'Leg Press', 'Lateral Raise',
+        'Dumbbell Row', 'Plank', 'Lunge', 'Leg Curl', 'Chest Fly',
+        'Cable Crossover', 'Seated Row', 'Lat Pulldown', 'Face Pull', 'Calf Raise'
+    ]
 
     trainer_id = random.choice(trainer_ids)
     user_id = random.choice(user_ids)
@@ -68,7 +74,7 @@ def insert_data_into_mongodb(client, trainer_ids, user_ids, rows):
         exercises = []
         for _ in range(5):  # każdy plan ma 5 ćwiczeń/przerw
             exercise = {
-                "name": fake.word(),
+                "name": random.sample(exercises, 5),
                 "sets": fake.random_int(min=1, max=5),
                 "reps": fake.random_int(min=5, max=15),
                 "weight": fake.random_int(min=10, max=100),
@@ -87,6 +93,16 @@ def insert_data_into_mongodb(client, trainer_ids, user_ids, rows):
             "exercises": exercises
         }
         trainings.insert_one(training_data)
+
+
+def select_data(client):
+    db = client[MONGO_DB]
+    trainings = db['trainings']
+    trainings.find({ "exercises": { "$elemMatch": { "name": { "$in": ["Deadlift"] } } } })
+
+
+def put_data(client):
+    pass
 
 
 def delete_data_mongodb(client):
