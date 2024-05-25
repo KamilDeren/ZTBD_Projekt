@@ -8,8 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    # TODO Czy generujemy losowe dane wewnątrz funkcji czy przekazujemy te same dane dla każdej bazy przez argument
-    #  do każdej funkcji?
     logger.info("Starting Cassandra data insertion")
     cassandra_main()
     logger.info("Finished Cassandra data insertion")

@@ -2,10 +2,12 @@ import uuid
 from datetime import datetime
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
+from faker import Faker
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+fake = Faker()
 
 # Konfiguracja bazy danych Cassandra
 KEYSPACE_NAME = "trainings_ztbd"
@@ -31,11 +33,11 @@ def get_cassandra_session():
 def create_tables_cassandra(session):
     create_table_queries = [
         """
-        CREATE TABLE IF NOT EXISTS cwiczenia (
-            cwiczenie_id UUID PRIMARY KEY,
-            nazwa TEXT,
-            typ TEXT,
-            opis TEXT
+        CREATE TABLE IF NOT EXISTS trainings (
+            training_id UUID PRIMARY KEY,
+            title TEXT,
+            type TEXT,
+            description TEXT
         );
         """,
         """
@@ -66,35 +68,88 @@ def create_tables_cassandra(session):
 
     for query in create_table_queries:
         session.execute(query)
-        logger.info("Executed query: %s", query.strip())
+
+
+def initial_insert_cassandra(session):
+    for _ in range(100):
+        training_id = uuid.uuid4()
+        title = fake.catch_phrase()
+        training_type = fake.word(ext_word_list=['Cardio', 'Strength', 'Flexibility', 'Balance'])
+        description = fake.text()
+
+        training_query = session.prepare(
+            "INSERT INTO trainings (training_id, title, type, description) VALUES (:training_id, :title, :type, "
+            ":description)"
+        )
+
+        session.execute(training_query.bind({
+            'training_id': training_id,
+            'title': title,
+            'type': training_type,
+            'description': description
+        }))
+
+        user_id = uuid.uuid4()
+        name = fake.first_name()
+        surname = fake.last_name()
+        email = fake.email()
+        password = fake.password()
+        is_trainer = fake.boolean()
+        gender = fake.random_element(elements=('Male', 'Female'))
+        weight = round(fake.random_number(digits=2, fix_len=False) + fake.random.random(), 1)
+        age = fake.random_int(min=18, max=80)
+
+        user_query = session.prepare(
+            "INSERT INTO users (user_id, name, surname, email, pass, isTrainer, gender, weight, age) VALUES ("
+            ":user_id, :name, :surname, :email, :pass, :isTrainer, :gender, :weight, :age)"
+        )
+
+        session.execute(user_query.bind({
+            'user_id': user_id,
+            'name': name,
+            'surname': surname,
+            'email': email,
+            'pass': password,
+            'isTrainer': is_trainer,
+            'gender': gender,
+            'weight': weight,
+            'age': age
+        }))
 
 
 def insert_data_into_cassandra(session, num_rows):
-    # TODO Zrobić inserty na podstawie stworzonych tabeli;
-    insert_query = session.prepare(
-        "INSERT INTO users (user_id, name, surname, email, pass, isTrainer, gender, weight, age) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-
-    for i in range(num_rows):
+    for _ in range(num_rows):
         user_id = uuid.uuid4()
-        name = f"Name {i}"
-        surname = f"Surname {i}"
-        email = f"email{i}@example.com"
-        password = "password"
-        is_trainer = i % 2 == 0
-        gender = f"Gender {i}"
-        weight = 70.0 + i
-        age = 20 + i
+        plan_id = uuid.uuid4()
+        trainer_id = uuid.uuid4()
+        exercises = [fake.word() for _ in range(fake.random_int(min=1, max=10))]
+        weight_sequence = [round(fake.random_number(digits=2, fix_len=False) + fake.random.random(), 1)
+                           for _ in range(len(exercises))]
+        date = fake.date_time_this_year()
 
-        session.execute(insert_query.bind((user_id, name, surname, email, password, is_trainer, gender, weight, age)))
+        plan_query = session.prepare(
+            "INSERT INTO plans (user_id, plan_id, trainer_id, exercises, weight_sequence, date) VALUES (:user_id, "
+            ":plan_id, :trainer_id, :exercises, :weight_sequence, :date)"
+        )
+
+        session.execute(plan_query.bind({
+            'user_id': user_id,
+            'plan_id': plan_id,
+            'trainer_id': trainer_id,
+            'exercises': exercises,
+            'weight_sequence': weight_sequence,
+            'date': date
+        }))
 
 
 def main():
     cassandra_session = get_cassandra_session()
 
+    create_tables_cassandra(cassandra_session)
+    initial_insert_cassandra(cassandra_session)
+
     start_time_cassandra = datetime.now()
-    insert_data_into_cassandra(cassandra_session, 200000)
+    insert_data_into_cassandra(cassandra_session, 200)
     end_time_cassandra = datetime.now()
 
     duration_cassandra = end_time_cassandra - start_time_cassandra
