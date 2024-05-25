@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     logger.info("Starting Cassandra data insertion")
-    cassandra_main()
+    #cassandra_main()
     logger.info("Finished Cassandra data insertion")
 
     logger.info("Starting PostgreSQL data insertion")
@@ -17,7 +17,7 @@ def main():
     logger.info("Finished PostgreSQL data insertion")
 
     logger.info("Starting MongoDB data insertion")
-    #mongodb_main()
+    mongodb_main()
     logger.info("Finished MongoDB data insertion")
 
 
