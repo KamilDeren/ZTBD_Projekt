@@ -19,7 +19,7 @@ PASSWORD = "password"
 
 def get_cassandra_session():
     auth_provider = PlainTextAuthProvider(username=USERNAME, password=PASSWORD)
-    cluster = Cluster(contact_points=CASSANDRA_CONTACT_POINTS, port=CASSANDRA_PORT, auth_provider=auth_provider)
+    cluster = Cluster(contact_points=CASSANDRA_CONTACT_POINTS, port=CASSANDRA_PORT, auth_provider=auth_provider, protocol_version = 5)
     session = cluster.connect()
     create_keyspace_query = f"""
         CREATE KEYSPACE IF NOT EXISTS {KEYSPACE_NAME}
@@ -71,7 +71,7 @@ def create_tables_cassandra(session):
 
 
 def initial_insert_cassandra(session):
-    for _ in range(100):
+    for _ in range(200):
         training_id = uuid.uuid4()
         title = fake.catch_phrase()
         training_type = fake.word(ext_word_list=['Cardio', 'Strength', 'Flexibility', 'Balance'])
@@ -142,6 +142,15 @@ def insert_data_into_cassandra(session, num_rows):
         }))
 
 
+def clear_cassandra(cassandra_session):
+    cassandra_session.execute("TRUNCATE TABLE trainings")
+    cassandra_session.execute("TRUNCATE TABLE users")
+
+
+def delete_data_cassandra(cassandra_session):
+    cassandra_session.execute("TRUNCATE TABLE plans")
+
+
 def main():
     cassandra_session = get_cassandra_session()
 
@@ -149,11 +158,20 @@ def main():
     initial_insert_cassandra(cassandra_session)
 
     start_time_cassandra = datetime.now()
-    insert_data_into_cassandra(cassandra_session, 200)
+    insert_data_into_cassandra(cassandra_session, 100)
     end_time_cassandra = datetime.now()
 
     duration_cassandra = end_time_cassandra - start_time_cassandra
     logger.info("Czas wstawiania danych do bazy Cassandra: %s", duration_cassandra)
+
+    start_time_postgres = datetime.now()
+    delete_data_cassandra(cassandra_session)
+    end_time_postgres = datetime.now()
+
+    duration_mongodb = end_time_postgres - start_time_postgres
+    logger.info("Czas usuwania danych do bazy Cassandra: %s", duration_mongodb)
+
+    clear_cassandra(cassandra_session)
 
     cassandra_session.shutdown()
 

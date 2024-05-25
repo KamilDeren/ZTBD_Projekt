@@ -134,7 +134,6 @@ def create_tables_postgres(conn):
 
     for query in create_table_queries:
         cursor.execute(query)
-        logger.info("Executed query: %s", query.strip())
 
     conn.commit()
     cursor.close()
@@ -143,7 +142,7 @@ def create_tables_postgres(conn):
 def insert_users_into_postgres(conn, num_rows):
     cursor = conn.cursor()
 
-    for _ in range(num_rows):
+    for i in range(num_rows):
         fake = faker.Faker()
         name = fake.first_name()
         surname = fake.last_name()
@@ -155,10 +154,10 @@ def insert_users_into_postgres(conn, num_rows):
         age = random.randint(18, 80)
 
         insert_query = sql.SQL(
-            "INSERT INTO users (first_name, surname, email, password, isTrainer, gender, weight, age) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)")
+            "INSERT INTO users (id, first_name, surname, email, password, isTrainer, gender, weight, age) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)")
 
-        cursor.execute(insert_query, (name, surname, email, password, is_trainer, gender, weight, age))
+        cursor.execute(insert_query, (i + 1, name, surname, email, password, is_trainer, gender, weight, age))
 
     conn.commit()
     cursor.close()
@@ -167,9 +166,9 @@ def insert_users_into_postgres(conn, num_rows):
 def insert_exercises_names_into_postgres(conn):
     cursor = conn.cursor()
 
-    for exercise in exercises:
-        insert_query = sql.SQL("INSERT INTO exercisesname (en_name) VALUES (%s)")
-        cursor.execute(insert_query, (exercise,))
+    for i, exercise in enumerate(exercises):
+        insert_query = sql.SQL("INSERT INTO exercisesname (id, en_name) VALUES (%s,%s)")
+        cursor.execute(insert_query, (i + 1, exercise,))
 
     conn.commit()
     cursor.close()
@@ -178,9 +177,9 @@ def insert_exercises_names_into_postgres(conn):
 def insert_muscles_names_into_postgres(conn):
     cursor = conn.cursor()
 
-    for muscle in muscles:
-        insert_query = sql.SQL("INSERT INTO muscles (muscle_name) VALUES (%s)")
-        cursor.execute(insert_query, (muscle,))
+    for i, muscle in enumerate(muscles):
+        insert_query = sql.SQL("INSERT INTO muscles (id, muscle_name) VALUES (%s, %s)")
+        cursor.execute(insert_query, (i + 1, muscle,))
 
     conn.commit()
     cursor.close()
@@ -191,8 +190,8 @@ def insert_exercises_into_postgres(conn):
 
     for i in range(len(exercises)):
         insert_query = sql.SQL(
-            "INSERT INTO exercises (exercise_name_id, description, gif, tags) VALUES (%s, %s, %s, %s)")
-        cursor.execute(insert_query, (i + 1, exercises[i] + " description", "path to gif", ['a', 'b', 'c'],))
+            "INSERT INTO exercises (id, exercise_name_id, description, gif, tags) VALUES (%s, %s, %s, %s, %s)")
+        cursor.execute(insert_query, (i + 1, i + 1, exercises[i] + " description", "path to gif", ['a', 'b', 'c'],))
     conn.commit()
     cursor.close()
 
@@ -208,18 +207,16 @@ def insert_exercise_muscles_into_postgres(conn):
 
 def insert_plans_into_postgres(conn, num_rows):
     cursor = conn.cursor()
-    exercise = len(exercises)
+
     for i in range(num_rows):
         insert_query = sql.SQL("INSERT INTO plans (weightsequences, date) VALUES (%s, %s)")
-        insert_query_sec = sql.SQL("INSERT INTO  usersplans (user_id, trainer_id, plan_id) VALUES  (%s, %s, %s)")
-        insert_query_third = sql.SQL("INSERT INTO exerciseplans (exercise_id, plan_id) VALUES (%s, %s)")
         cursor.execute(insert_query, (f"sequence{i}", date.today(),))
 
     conn.commit()
     cursor.close()
 
 
-def insert_plans_data_into_postgres(conn, num_rows):
+def insert_userplans_and_exercisesplans_into_postgres(conn, num_rows):
     cursor = conn.cursor()
     exercise = len(exercises)
     for i in range(num_rows):
@@ -237,8 +234,9 @@ def insert_plans_data_into_postgres(conn, num_rows):
 def insert_trainings_into_postgres(conn, num_rows):
     cursor = conn.cursor()
     for i in range(num_rows):
-        insert_query = sql.SQL("INSERT INTO trainings (date, user_id, plan_id) VALUES (%s, %s, %s)")
-        cursor.execute(insert_query, (date.today(), random.randint(1, 100), random.randint(1, num_rows),))
+        insert_query = sql.SQL("INSERT INTO trainings (id, date, user_id, training_exercise_id, plan_id) VALUES (%s, "
+                               "%s, %s, %s, %s)")
+        cursor.execute(insert_query, (i + 1, date.today(), random.randint(1, 100), random.randint(1, 20), random.randint(1, num_rows)))
 
     conn.commit()
     cursor.close()
@@ -248,9 +246,9 @@ def insert_trainings_exercises_into_postgres(conn, num_rows):
     cursor = conn.cursor()
     exercise = len(exercises)
     for i in range(num_rows):
-        insert_query = sql.SQL("INSERT INTO trainingexercises (exercise_id, sets, rep, weight) VALUES (%s, %s, %s, %s)")
-        cursor.execute(insert_query, (
-        random.randint(1, exercise), random.randint(1, 5), random.randint(1, 20), random.randint(1, 200),))
+        insert_query = sql.SQL("INSERT INTO trainingexercises (id, exercise_id, sets, rep, weight) VALUES (%s, %s, "
+                               "%s, %s, %s)")
+        cursor.execute(insert_query, (i + 1, random.randint(1, exercise), random.randint(1, 5), random.randint(1, 20), random.randint(1, 200),))
 
     conn.commit()
     cursor.close()
@@ -262,7 +260,11 @@ def insert_train_trainings_exercises_into_postgres(conn, num_rows):
         insert_query = sql.SQL("INSERT INTO ttexercises(trainingexercise_id, training_id) VALUES (%s, %s)")
         cursor.execute(insert_query, (random.randint(1, num_rows), random.randint(1, num_rows),))
 
+
 def initial_insert_into_postgres(postgres_conn, rows):
+    cursor = postgres_conn.cursor()
+    cursor.execute(f"ALTER SEQUENCE plans_id_seq RESTART WITH 1")
+
     create_tables_postgres(postgres_conn)
     insert_users_into_postgres(postgres_conn, rows)
     insert_exercises_names_into_postgres(postgres_conn)
@@ -271,30 +273,84 @@ def initial_insert_into_postgres(postgres_conn, rows):
     insert_exercise_muscles_into_postgres(postgres_conn)
     insert_trainings_exercises_into_postgres(postgres_conn, rows)
     insert_plans_into_postgres(postgres_conn, rows)
-    insert_plans_data_into_postgres(postgres_conn, rows)
+    insert_userplans_and_exercisesplans_into_postgres(postgres_conn, rows)
     insert_trainings_into_postgres(postgres_conn, rows)
     insert_train_trainings_exercises_into_postgres(postgres_conn, rows)
 
+
+def clear_postgres(postgres_con):
+    cur = postgres_con.cursor()
+    commands = [
+        """
+        DELETE FROM TTExercises;
+        """,
+        """
+        DELETE FROM Trainings;
+        """,
+        """
+        DELETE FROM TrainingExercises;
+        """,
+        """
+        DELETE FROM ExercisesMuscles;
+        """,
+        """
+        DELETE FROM Exercises;
+        """,
+        """
+        DELETE FROM Muscles;
+        """,
+        """
+        DELETE FROM ExercisesName;
+        """,
+        """
+        DELETE FROM Users;
+        """
+    ]
+
+    for command in commands:
+        cur.execute(command)
+
+    postgres_con.commit()
+    cur.close()
+    postgres_con.close()
+
+
+def delete_data_postgres(postgres_con):
+    cur = postgres_con.cursor()
+
+    cur.execute("DELETE FROM UsersPlans")
+    cur.execute("DELETE FROM ExercisesPlans")
+    cur.execute("DELETE FROM TTExercises WHERE training_id IN (SELECT id FROM Trainings)")
+    cur.execute("DELETE FROM Trainings WHERE plan_id IN (SELECT id FROM Plans)")
+    cur.execute("DELETE FROM Plans")
+
+    postgres_con.commit()
+    cur.close()
+
+
 def main():
-    rows = 1000
     postgres_conn = get_postgres_connection()
 
-    #TODO: Jak będziesz to puszczał to puść tego initial_inserta najpierw dla jakiejś małej liczby danych i dopiero potem mierz
-    # czas dla tych dwóch insertów co tam są w tym mierzeniu czasu, bo tu wszystkie tabele są inicjowane bo inaczej błąd wywalało
-
-
-    initial_insert_into_postgres(postgres_conn, rows)
+    initial_insert_into_postgres(postgres_conn, 200)
 
     start_time_postgres = datetime.now()
 
-    # insert_plans_into_postgres(postgres_conn, rows)
-    # insert_plans_data_into_postgres(postgres_conn, rows)
-
+    insert_plans_into_postgres(postgres_conn, 100)
+    insert_userplans_and_exercisesplans_into_postgres(postgres_conn, 100)
 
     end_time_postgres = datetime.now()
 
     duration_postgres = end_time_postgres - start_time_postgres
     logger.info("Czas wstawiania danych do bazy PostgreSQL: %s", duration_postgres)
+
+    start_time_postgres = datetime.now()
+    delete_data_postgres(postgres_conn)
+    end_time_postgres = datetime.now()
+
+    duration_mongodb = end_time_postgres - start_time_postgres
+    logger.info("Czas usuwania danych do bazy PostgreSQL: %s", duration_mongodb)
+
+    clear_postgres(postgres_conn)
 
     postgres_conn.close()
 
