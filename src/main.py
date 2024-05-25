@@ -8,6 +8,10 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    #TODO: Jak będziesz to puszczał postgresa to puść tego initial_inserta najpierw dla jakiejś małej liczby danych i dopiero potem mierz
+    # czas dla tych dwóch insertów co tam są w tym mierzeniu czasu, bo tu wszystkie tabele są inicjowane bo inaczej błąd wywalało
+
+
     logger.info("Starting Cassandra data insertion")
     cassandra_main()
     logger.info("Finished Cassandra data insertion")
