@@ -25,7 +25,7 @@ def get_mongo_client():
     return client
 
 
-def initial_insert_mongodb(client, rows):
+def initial_insert(client, rows):
     db = client[MONGO_DB]
     users = db['users']
 
@@ -56,7 +56,7 @@ def initial_insert_mongodb(client, rows):
     return trainer_ids, user_ids
 
 
-def insert_data_into_mongodb(client, trainer_ids, user_ids, rows):
+def insert_data(client, trainer_ids, user_ids, rows):
     db = client[MONGO_DB]
     trainings = db['trainings']
     exercises = [
@@ -71,10 +71,9 @@ def insert_data_into_mongodb(client, trainer_ids, user_ids, rows):
 
     # Przydzielanie planów treningowych trenującym
     for _ in range(rows):
-        exercises = []
         for _ in range(5):  # każdy plan ma 5 ćwiczeń/przerw
             exercise = {
-                "name": random.sample(exercises, 5),
+                "name": random.sample(exercises, 2),
                 "sets": fake.random_int(min=1, max=5),
                 "reps": fake.random_int(min=5, max=15),
                 "weight": fake.random_int(min=10, max=100),
@@ -102,17 +101,23 @@ def select_data(client):
 
 
 def put_data(client):
-    pass
+    db = client[MONGO_DB]
+    trainings = db['trainings']
+
+    trainings.update_many(
+        {"exercises.name": "Deadlift"},  # Warunek wyszukiwania
+        {"$set": {"exercises.$.name": "Bench Press"}}  # Aktualizacja pola name na "Bench Press"
+    )
 
 
-def delete_data_mongodb(client):
+def delete_data(client):
     db = client[MONGO_DB]
     trainings_collection = db['trainings']
 
     trainings_collection.delete_many({})
 
 
-def clear_mongodb(client):
+def clear(client):
     db = client[MONGO_DB]
     users = db['users']
 
@@ -122,23 +127,41 @@ def clear_mongodb(client):
 def main():
     mongo_client = get_mongo_client()
 
-    trainer_ids, user_ids = initial_insert_mongodb(mongo_client, 200)
+    trainer_ids, user_ids = initial_insert(mongo_client, 200)
 
-    start_time_mongodb = datetime.now()
-    insert_data_into_mongodb(mongo_client, trainer_ids, user_ids, 10000)
-    end_time_mongodb = datetime.now()
+    # Insert time measurement
+    start = datetime.now()
+    insert_data(mongo_client, trainer_ids, user_ids, 100)
+    end = datetime.now()
 
-    duration_mongodb = end_time_mongodb - start_time_mongodb
-    logger.info("Czas wstawiania danych do bazy MongoDB: %s", duration_mongodb)
+    duration = end - start
+    logger.info("Czas wstawiania danych do bazy MongoDB: %s", duration)
 
-    start_time_mongodb = datetime.now()
-    delete_data_mongodb(mongo_client)
-    end_time_mongodb = datetime.now()
+    # Select time measurement
+    start = datetime.now()
+    select_data(mongo_client)
+    end = datetime.now()
 
-    duration_mongodb = end_time_mongodb - start_time_mongodb
-    logger.info("Czas usuwania danych do bazy MongoDB: %s", duration_mongodb)
+    duration = end - start
+    logger.info("Czas szukania danych w bazie MongoDB: %s", duration)
 
-    clear_mongodb(mongo_client)
+    # Put time measurement
+    start = datetime.now()
+    put_data(mongo_client)
+    end = datetime.now()
+
+    duration = end - start
+    logger.info("Czas zamiany danych w bazie MongoDB: %s", duration)
+
+    # Delete time measurement
+    start = datetime.now()
+    delete_data(mongo_client)
+    end = datetime.now()
+
+    duration = end - start
+    logger.info("Czas usuwania danych z bazy MongoDB: %s", duration)
+
+    clear(mongo_client)
     mongo_client.close()
 
 
