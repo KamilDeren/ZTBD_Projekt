@@ -118,13 +118,15 @@ def initial_insert(session):
         }))
 
 
-def insert_data(session, num_rows):
+def prepare_data(num_rows):
     exercises = [
         'Bench Press', 'Squat', 'Deadlift', 'Overhead Press', 'Pull Up',
         'Push Up', 'Bicep Curl', 'Tricep Extension', 'Leg Press', 'Lateral Raise',
         'Dumbbell Row', 'Plank', 'Lunge', 'Leg Curl', 'Chest Fly',
         'Cable Crossover', 'Seated Row', 'Lat Pulldown', 'Face Pull', 'Calf Raise'
     ]
+    data = []
+
     for _ in range(num_rows):
         user_id = uuid.uuid4()
         plan_id = uuid.uuid4()
@@ -134,18 +136,32 @@ def insert_data(session, num_rows):
                            for _ in range(len(exercise))]
         date = fake.date_time_this_year()
 
-        plan_query = session.prepare(
-            "INSERT INTO plans (user_id, plan_id, trainer_id, exercise, weight_sequence, date) VALUES (:user_id, "
-            ":plan_id, :trainer_id, :exercise, :weight_sequence, :date)"
-        )
-
-        session.execute(plan_query.bind({
+        data.append({
             'user_id': user_id,
             'plan_id': plan_id,
             'trainer_id': trainer_id,
             'exercise': exercise,
             'weight_sequence': weight_sequence,
             'date': date
+        })
+
+    return data
+
+
+def insert_data(session, data):
+    for entry in data:
+        plan_query = session.prepare(
+            "INSERT INTO plans (user_id, plan_id, trainer_id, exercise, weight_sequence, date) VALUES (:user_id, "
+            ":plan_id, :trainer_id, :exercise, :weight_sequence, :date)"
+        )
+
+        session.execute(plan_query.bind({
+            'user_id': entry['user_id'],
+            'plan_id': entry['plan_id'],
+            'trainer_id': entry['trainer_id'],
+            'exercise': entry['exercise'],
+            'weight_sequence': entry['weight_sequence'],
+            'date': entry['date']
         }))
 
 
@@ -167,47 +183,51 @@ def delete_data(session):
 
 
 def main():
-    session = get_cassandra_session()
+    for row in [1000, 2000, 5000, 10000, 20000, 50000, 100000]:
+        session = get_cassandra_session()
 
-    # Initial inserts
-    create_tables(session)
-    initial_insert(session)
+        # Initial inserts
+        create_tables(session)
+        initial_insert(session)
 
-    # Insert time measurement
-    start = datetime.now()
-    insert_data(session, 100)
-    end = datetime.now()
+        # Creating data for insert - here you enter row number
+        data_for_insert = prepare_data(row)
 
-    duration = end - start
-    logger.info("Czas wstawiania danych do bazy Cassandra: %s", duration)
+        # Insert time measurement
+        start = datetime.now()
+        insert_data(session, data_for_insert)
+        end = datetime.now()
 
-    # Select time measurement
-    start = datetime.now()
-    select_data(session)
-    end = datetime.now()
+        duration = end - start
+        logger.info("Czas wstawiania %s danych do bazy Cassandra: %s", row,  duration)
 
-    duration = end - start
-    logger.info("Czas szukania danych w bazie Cassandra: %s", duration)
+        # Select time measurement
+        start = datetime.now()
+        select_data(session)
+        end = datetime.now()
 
-    # Put time measurement
-    start = datetime.now()
-    put_data(session)
-    end = datetime.now()
+        duration = end - start
+        logger.info("Czas szukania danych w bazie Cassandra: %s", duration)
 
-    duration = end - start
-    logger.info("Czas zamiany danych w bazie Cassandra: %s", duration)
+        # Put time measurement
+        start = datetime.now()
+        put_data(session)
+        end = datetime.now()
 
-    # Delete time measurement
-    start = datetime.now()
-    delete_data(session)
-    end = datetime.now()
+        duration = end - start
+        logger.info("Czas zamiany danych w bazie Cassandra: %s", duration)
 
-    duration = end - start
-    logger.info("Czas usuwania danych z bazy Cassandra: %s", duration)
+        # Delete time measurement
+        start = datetime.now()
+        delete_data(session)
+        end = datetime.now()
 
-    clear(session)
+        duration = end - start
+        logger.info("Czas usuwania danych z bazy Cassandra: %s", duration)
 
-    session.shutdown()
+        clear(session)
+
+        session.shutdown()
 
 
 if __name__ == "__main__":

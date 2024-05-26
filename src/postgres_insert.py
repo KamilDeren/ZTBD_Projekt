@@ -236,7 +236,8 @@ def insert_trainings(conn, num_rows):
     for i in range(num_rows):
         insert_query = sql.SQL("INSERT INTO trainings (id, date, user_id, training_exercise_id, plan_id) VALUES (%s, "
                                "%s, %s, %s, %s)")
-        cursor.execute(insert_query, (i + 1, date.today(), random.randint(1, 100), random.randint(1, 20), random.randint(1, num_rows)))
+        cursor.execute(insert_query, (
+        i + 1, date.today(), random.randint(1, 100), random.randint(1, 20), random.randint(1, num_rows)))
 
     conn.commit()
     cursor.close()
@@ -248,7 +249,8 @@ def insert_trainings_exercises(conn, num_rows):
     for i in range(num_rows):
         insert_query = sql.SQL("INSERT INTO trainingexercises (id, exercise_id, sets, rep, weight) VALUES (%s, %s, "
                                "%s, %s, %s)")
-        cursor.execute(insert_query, (i + 1, random.randint(1, exercise), random.randint(1, 5), random.randint(1, 20), random.randint(1, 200),))
+        cursor.execute(insert_query, (
+        i + 1, random.randint(1, exercise), random.randint(1, 5), random.randint(1, 20), random.randint(1, 200),))
 
     conn.commit()
     cursor.close()
@@ -354,48 +356,49 @@ def delete_data(postgres_con):
 
 
 def main():
-    postgres_conn = get_postgres_connection()
+    for row in [200000, 500000, 1000000, 2000000, 5000000]:
+        postgres_conn = get_postgres_connection()
 
-    initial_insert(postgres_conn, 200)
+        initial_insert(postgres_conn, 200)
 
-    # Insert time measurement
-    start = datetime.now()
+        # Insert time measurement
+        start = datetime.now()
 
-    insert_plans(postgres_conn, 100)
-    insert_userplans_and_exercisesplans(postgres_conn, 100)
+        insert_plans(postgres_conn, row)
+        insert_userplans_and_exercisesplans(postgres_conn, row)
 
-    end = datetime.now()
+        end = datetime.now()
 
-    duration_postgres = end - start
-    logger.info("Czas wstawiania danych do bazy PostgreSQL: %s", duration_postgres)
+        duration_postgres = end - start
+        logger.info("Czas wstawiania %s danych do bazy PostgresSQL: %s", row, duration_postgres)
 
-    # Select time measurement
-    start = datetime.now()
-    select_data(postgres_conn)
-    end = datetime.now()
+        # Select time measurement
+        start = datetime.now()
+        select_data(postgres_conn)
+        end = datetime.now()
 
-    duration = end - start
-    logger.info("Czas szukania danych w bazie PostgreSQL: %s", duration)
+        duration = end - start
+        logger.info("Czas szukania danych w bazie PostgresSQL: %s", duration)
 
-    # Put time measurement
-    start = datetime.now()
-    put_data(postgres_conn)
-    end = datetime.now()
+        # Put time measurement
+        start = datetime.now()
+        put_data(postgres_conn)
+        end = datetime.now()
 
-    duration = end - start
-    logger.info("Czas zamiany danych w bazie PostgreSQL: %s", duration)
+        duration = end - start
+        logger.info("Czas zamiany danych w bazie PostgresSQL: %s", duration)
 
-    # Delete time measurement
-    start = datetime.now()
-    delete_data(postgres_conn)
-    end = datetime.now()
+        # Delete time measurement
+        start = datetime.now()
+        delete_data(postgres_conn)
+        end = datetime.now()
 
-    duration = end - start
-    logger.info("Czas usuwania danych do bazy PostgreSQL: %s", duration)
+        duration = end - start
+        logger.info("Czas usuwania danych do bazy PostgresSQL: %s", duration)
 
-    clear(postgres_conn)
+        clear(postgres_conn)
 
-    postgres_conn.close()
+        postgres_conn.close()
 
 
 if __name__ == "__main__":
